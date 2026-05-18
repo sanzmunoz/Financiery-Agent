@@ -1,234 +1,267 @@
-# FinBot — Asistente Financiero con IA
+# FinBot — Bilingual Financial AI Assistant
 
-Chatbot bilingüe (ES/EN) para fintech con RAG, caché semántico, voz, visión y tools externas.
+Bilingual chatbot (ES/EN) for a fintech with RAG, semantic cache, voice pipeline, vision, and real-time financial tools.
 
 ---
 
 ## Stack
 
-| Capa | Tecnología |
-|------|-----------|
-| Frontend | Vanilla JS (HTML, CSS, JS) |
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vanilla JS (HTML, CSS, JS) — no framework |
 | Backend | Python, FastAPI, LangChain, OpenAI SDK |
-| Agente IA | n8n cloud |
-| Base de datos | Supabase (Postgres + pgvector) |
+| AI Agent | n8n Cloud |
+| Database | Supabase (PostgreSQL + pgvector) |
+| Frontend hosting | Vercel |
+| Backend hosting | Render |
 
 ---
 
-## Estructura del proyecto
+## Project structure
 
 ```
 ├── frontend/
 │   ├── index.html
 │   ├── style.css
-│   └── app.js
+│   ├── app.js
+│   └── assets/
+│       └── agent_finbot.jpeg       # Chat background image
 │
 ├── backend/
 │   ├── src/
-│   │   ├── main.py                  # FastAPI app + CORS + rutas
+│   │   ├── main.py                 # FastAPI app — CORS + routes
 │   │   ├── routes/
-│   │   │   └── chat.py              # POST /api/chat  y  POST /api/transcribe
+│   │   │   └── chat.py             # POST /api/chat  and  POST /api/transcribe
 │   │   ├── services/
-│   │   │   ├── cache.py             # Caché semántico (Supabase + embeddings)
-│   │   │   └── n8n.py               # Cliente webhook n8n
+│   │   │   ├── cache.py            # Semantic cache (Supabase + embeddings)
+│   │   │   └── n8n.py              # n8n webhook client
 │   │   └── config/
-│   │       └── supabase.py          # Cliente Supabase
-│   └── .env
+│   │       └── supabase.py         # Supabase client
+│   └── .env-example
 │
 ├── scripts/
-│   ├── populate_rag.py              # One-time: scrapea web e indexa en Supabase
-│   └── seed_cache.py                # One-time: pre-pobla caché con FAQs
+│   ├── populate_rag.py             # One-time: scrape web and index into Supabase
+│   └── seed_cache.py               # One-time: pre-populate cache with FAQs
 │
 ├── supabase/
-│   └── schema.sql                   # Tablas rag_documents y semantic_cache
+│   └── schema.sql                  # Tables, indexes, and RPC functions
+│
+├── requirements.txt                # Python dependencies (root level)
 │
 └── N8N/
-    └── Agent AI.json                # Workflow exportado de n8n
+    └── Agent AI-final.json         # Exported n8n workflow
 ```
 
 ---
 
-## Setup completo — ejecutar en orden
+## Environment variables
 
-### 1. Supabase — crear tablas
-
-En el SQL Editor de tu proyecto Supabase, ejecuta el contenido de `supabase/schema.sql`.
-
-Verifica que existan las tablas `rag_documents` y `semantic_cache` y la extensión `pgvector`.
-
----
-
-### 2. Variables de entorno
-
-Edita `backend/.env`:
+Create `backend/.env` with:
 
 ```bash
 OPENAI_API_KEY=sk-proj-...
 SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_SECRET_KEY=eyJhbGc...
+SUPABASE_SECRET_KEY=eyJhbGc...          # use service_role key, not anon
 N8N_WEBHOOK_URL=https://tu-instancia.n8n.cloud/webhook/finbot
+ALLOWED_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 ```
 
-Edita `scripts/.env` con los mismos valores (sin `N8N_WEBHOOK_URL`).
+Create `scripts/.env` with the same values except `N8N_WEBHOOK_URL` and `ALLOWED_ORIGINS`.
 
 ---
 
-### 3. Entorno virtual e instalación de dependencias
+## Local setup — run in order
+
+### 1. Supabase — create tables
+
+In the Supabase SQL Editor, run the full contents of `supabase/schema.sql`.
+
+Use the **Run** button — do **not** use "Run and enable RLS", as the schema explicitly disables RLS for these tables.
+
+Verify:
+```sql
+SELECT tablename FROM pg_tables WHERE schemaname = 'public';
+SELECT proname FROM pg_proc WHERE proname LIKE 'match_%';
+```
+
+---
+
+### 2. Python environment and dependencies
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate      # Linux/Mac
-# .venv\Scripts\activate       # Windows
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Linux/Mac
 
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 ```
 
 ---
 
-### 4. Poblar RAG (one-time)
+### 3. Populate RAG index (one-time)
 
-Scrapea páginas de Nequi y Bancolombia y guarda los chunks con embeddings en Supabase.
+Scrapes 10 pages from Nequi and Bancolombia and stores chunks with embeddings in Supabase.
 
 ```bash
 python scripts/populate_rag.py
 ```
 
-Verifica: `SELECT COUNT(*) FROM rag_documents;` debe retornar > 0.
+Verify: `SELECT COUNT(*) FROM rag_documents;` should return > 0.
 
 ---
 
-### 5. Poblar caché semántico (one-time)
+### 4. Seed semantic cache (one-time)
 
-Inserta 7 preguntas frecuentes de FinBot con sus embeddings en `semantic_cache`.
+Inserts 7 pre-defined FinBot FAQs with embeddings into `semantic_cache`.
 
 ```bash
 python scripts/seed_cache.py
 ```
 
-Verifica: `SELECT query_text FROM semantic_cache;` debe mostrar las entradas.
+Verify: `SELECT query_text FROM semantic_cache;` should show the FAQ entries.
 
 ---
 
-### 6. Importar workflow en n8n
+### 5. Import n8n workflow
 
-Importa `N8N/Agent AI.json` en tu instancia de n8n cloud. Configura las credenciales de OpenAI y Supabase en los nodos correspondientes y activa el workflow.
+Import `N8N/Agent AI-final.json` into your n8n Cloud instance. Configure OpenAI and Supabase credentials on the corresponding nodes and activate the workflow.
 
 ---
 
-### 7. Iniciar el backend
+### 6. Start the backend
 
 ```bash
 cd backend
 fastapi dev src/main.py
 ```
 
-El servidor queda en `http://localhost:8000`.
+Server runs at `http://localhost:8000`. Health check: `GET /health`.
 
 ---
 
-### 8. Abrir el frontend
-
-Abre `frontend/index.html` directamente en el navegador, o sirve la carpeta con cualquier servidor estático:
+### 7. Open the frontend
 
 ```bash
 npx serve frontend
 ```
 
+Or open `frontend/index.html` directly (note: some browser APIs like MediaRecorder require HTTPS or localhost).
+
 ---
 
-## Flujo de llamadas — mensaje de texto
+## Production deployment
+
+### Backend — Render
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | `backend` |
+| Build command | `pip install -r ../requirements.txt` |
+| Start command | `fastapi run src/main.py --host 0.0.0.0 --port $PORT` |
+
+Add all five environment variables in Render's **Environment** panel. After the frontend is deployed, update `ALLOWED_ORIGINS` with the Vercel URL and redeploy.
+
+### Frontend — Vercel
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | `frontend` |
+| Framework | Other |
+
+The `BACKEND_URL` in `app.js` switches automatically between localhost (development) and the Render URL (production) based on `window.location.hostname`.
+
+---
+
+## Request flow — text message
 
 ```
-[Navegador] frontend/app.js
+[Browser] frontend/app.js
 │
-├─ Usuario escribe y presiona Enviar
+├─ User types and submits
 │   └─ manejarEnvioMensaje()
-│       ├─ imagenParaEnviar = imagenActual   ← captura ANTES del reset
-│       ├─ agregarMensaje({ rol:'user' })    ← renderiza burbuja en UI
+│       ├─ imagenParaEnviar = imagenActual   ← captured before DOM reset
+│       ├─ agregarMensaje({ rol:'user' })    ← render bubble
 │       └─ fetch POST /api/chat
 │           body: { message, messages: construirHistorial()[-7], image, mode }
 │                               │
 [Backend] backend/src/routes/chat.py  →  POST /chat
-│   ├─ [Sin imagen] → check_semantic_cache(message)
-│   │       ├─ aembed_query(message) → vector
-│   │       └─ supabase.rpc('match_cache', threshold=0.90)
-│   │           ├─ HIT  → return { response, from_cache: true } ──► frontend
-│   │           └─ MISS → continúa ↓
+│   ├─ [No image] → check_semantic_cache(message)
+│   │       ├─ embed message → pgvector cosine similarity (threshold 0.90)
+│   │       ├─ HIT  → return { response, from_cache: true } ──► frontend
+│   │       └─ MISS → continue ↓
 │   │
 │   ├─ call_n8n_agent(message, messages, image, mode)
-│   │       └─ httpx POST N8N_WEBHOOK_URL (timeout 60s)
-│   │           body: { message, messages[], image, mode }
-│   │                           │
-│   │           [n8n Workflow]  │
-│   │           ├─ Parse Input: detecta idioma, arma chatInput con historial
-│   │           ├─ IF image → rama Vision (gpt-4o-mini via HTTP Request)
+│   │       └─ POST N8N_WEBHOOK_URL (60s timeout)
+│   │           [n8n Workflow]
+│   │           ├─ Parse Input: detect language, build chatInput with history
+│   │           ├─ IF image → Vision branch (gpt-4o-mini via HTTP Request)
 │   │           └─ ELSE → AI Agent (gpt-4o-mini) + tools:
 │   │               ├─ Rag FitBox        → Supabase Vector Store (RAG)
-│   │               ├─ calculate_interest → Code Tool
-│   │               ├─ get_usd_rate      → HTTP (open.er-api.com)
-│   │               └─ currency_convert  → HTTP (frankfurter.dev)
+│   │               ├─ calculate_interest → Code Tool (compound interest)
+│   │               ├─ get_usd_rate      → open.er-api.com
+│   │               └─ currency_convert  → frankfurter.dev
 │   │           └─ Respond to Webhook → { response, tool_used }
 │   │
 │   ├─ [mode === 'audio'] → OpenAI TTS → base64 → audio_url
-│   ├─ [Sin imagen, sin tool] → store_in_cache(message, response)
+│   ├─ [No image, no tool] → store_in_cache(message, response)
 │   └─ return { response, from_cache, tool_used, audio_url, latency }
 │                               │
-[Navegador] frontend/app.js  ◄─┘
-│   ├─ conversationHistory.push(user)
-│   ├─ conversationHistory.push(assistant)
+[Browser] frontend/app.js  ◄───┘
+│   ├─ conversationHistory.push(user + assistant)
 │   ├─ agregarMensaje() → createElement
-│   │   └─ badges: ⚡ Caché / 🔧 tool / ⏱️ latency
-│   └─ [si audio_url] → new Audio(url).play()
+│   │   └─ badges: ⚡ Cache / 🔧 tool_name / latency ms
+│   └─ [if audio_url] → new Audio(url).play()
 ```
 
 ---
 
-## Flujo de llamadas — voz (STT)
+## Request flow — voice (STT)
 
 ```
-[Navegador]
-├─ Modo "Voz" → iniciarGrabacion()
+[Browser]
+├─ Mode "Voz" → iniciarGrabacion()
 │   └─ MediaRecorder → audioChunks[]
-├─ Detener → transcribirAudio(blob)
+├─ Stop → transcribirAudio(blob)
 │   └─ fetch POST /api/transcribe (FormData)
 │                       │
 [Backend] POST /transcribe
-│   ├─ Whisper API (whisper-1, auto-detect ES/EN)
-│   └─ return { text: "transcripción..." }
+│   ├─ Whisper (whisper-1, no language param → auto-detects ES/EN)
+│   └─ return { text: "transcription..." }
 │                       │
-[Navegador] ◄───────────┘
-│   └─ inputMensaje.value = text → usuario puede editar y enviar → flujo normal
+[Browser] ◄─────────────┘
+│   └─ inputMensaje.value = text → user edits and submits → normal flow
 ```
 
 ---
 
-## Flujo de llamadas — imagen (Vision)
+## Request flow — image (Vision)
 
 ```
-[Navegador]
-├─ Modo "Imagen+Texto" → FileReader → canvas resize (max 800px, JPEG 70%)
+[Browser]
+├─ Mode "Imagen+Texto" → FileReader → canvas resize (max 800px, JPEG 70%)
 ├─ manejarEnvioMensaje()
-│   ├─ imagenParaEnviar = imagenActual   ← captura ANTES del reset
+│   ├─ imagenParaEnviar = imagenActual   ← captured before DOM reset
 │   └─ fetch POST /api/chat { image: base64 }
 │                       │
 [Backend] POST /chat
-│   ├─ image presente → OMITE check_semantic_cache
-│   ├─ call_n8n_agent con image en base64
+│   ├─ image present → skip check_semantic_cache
+│   ├─ call_n8n_agent with image in base64
 │   │       └─ n8n: IF image → Code JS → OpenAI Vision (gpt-4o-mini)
 │   │           → Parse JSON response → Format → Respond
-│   └─ OMITE store_in_cache
+│   └─ skip store_in_cache
 ```
 
 ---
 
-## APIs
+## API reference
 
-| Método | Endpoint | Descripción |
+| Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/chat` | Enviar mensaje al agente |
-| POST | `/api/transcribe` | Transcribir audio con Whisper |
+| GET | `/health` | Health check |
+| POST | `/api/chat` | Send message to the agent |
+| POST | `/api/transcribe` | Transcribe audio with Whisper |
 
-### Body `/api/chat`
+### POST `/api/chat` — request body
 ```json
 {
   "message": "¿Cuánto está el dólar hoy?",
@@ -238,7 +271,7 @@ npx serve frontend
 }
 ```
 
-### Response `/api/chat`
+### POST `/api/chat` — response
 ```json
 {
   "response": "El dólar está a $4,250 COP hoy.",
@@ -251,12 +284,20 @@ npx serve frontend
 
 ---
 
-## Decisiones técnicas
+## Technical decisions
 
-- **TTS en backend, no en n8n**: OpenAI TTS devuelve binario. En lugar de subir a Supabase Storage desde n8n, el backend convierte el audio a base64 y lo devuelve como `data:audio/mpeg;base64,...` directamente en la respuesta JSON. Evita el paso de storage y funciona sin configuración adicional.
+- **TTS as base64, not file storage**: OpenAI TTS returns binary audio. The backend converts it to `data:audio/mpeg;base64,...` and returns it directly in the JSON response, avoiding Supabase Storage latency and extra configuration.
 
-- **Historial inyectado como texto**: El historial de los últimos 7 mensajes se serializa en el `chatInput` del Parse Input de n8n en lugar de usar un nodo Window Buffer Memory. Esto permite control total sobre el formato y evita dependencias de estado en n8n.
+- **History injected as plain text**: The last 7 messages (3 when an image is present) are serialized in the `chatInput` field of the n8n Parse Input node instead of using a Window Buffer Memory node. This gives full control over formatting and avoids n8n state persistence issues.
 
-- **No se cachean respuestas de tools**: Si `tool_used` tiene valor, la respuesta no se guarda en caché — los resultados de tools como tasas de cambio o precios de cripto son datos en tiempo real que no deben cachearse.
+- **Tool responses are never cached**: If `tool_used` is set, the response is not stored in the semantic cache — tools like `get_usd_rate` and `currency_convert` return real-time data that must not be served stale.
 
-- **`crypto_price` desconectado intencionalmente**: El tool existe en el workflow pero no está conectado al AI Agent.
+- **`crypto_price` intentionally disconnected**: The CoinGecko tool node exists in the n8n workflow but is not connected to the AI Agent. `currency_convert` (frankfurter.dev) handles international currency conversion as the active third external API.
+
+- **CORS restricted via env var**: `ALLOWED_ORIGINS` is read from the environment so the allowed origin list can differ between local development and production without code changes.
+
+- **Dynamic backend URL in frontend**: `app.js` detects `window.location.hostname` to switch between `http://localhost:8000` (development) and the Render production URL automatically.
+
+- **Custom coin cursor**: A JavaScript-driven `🪙` emoji follows the mouse outside the chat, input, and header areas. The system cursor is hidden only in those zones; interactive elements inside the chat restore the default cursor automatically.
+
+- **Chat background image**: The `.chat-container` uses a CSS layered background — the image (`assets/agent_finbot.jpeg`) sits below a semi-transparent green overlay so message bubbles remain readable regardless of image contrast.
