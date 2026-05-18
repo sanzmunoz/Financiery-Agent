@@ -1,44 +1,41 @@
 -- SUPABASE SCHEMA - FinBot
--- PASO 1: Habilitar pgvector
+-- Step 1: Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
-
--- PASO 2: Tabla RAG
--- metadata JSONB requerido por n8n Supabase Vector Store node
+-- Step 2: RAG documents table
+-- metadata JSONB column is required by the n8n Supabase Vector Store node
 
 CREATE TABLE IF NOT EXISTS rag_documents (
-                                             id         BIGSERIAL PRIMARY KEY,
-                                             content    TEXT NOT NULL,
-                                             embedding  VECTOR(1536) NOT NULL,
-    metadata   JSONB DEFAULT '{}',       -- Requerido por n8n Supabase Vector Store
+    id         BIGSERIAL PRIMARY KEY,
+    content    TEXT NOT NULL,
+    embedding  VECTOR(1536) NOT NULL,
+    metadata   JSONB DEFAULT '{}',       -- Required by n8n Supabase Vector Store
     source_url TEXT,
     created_at TIMESTAMP DEFAULT NOW()
-    );
+);
 
 CREATE INDEX IF NOT EXISTS rag_documents_embedding_idx
     ON rag_documents
     USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 100);
 
-
--- PASO 3: Tabla Caché Semántico
+-- Step 3: Semantic cache table
 
 CREATE TABLE IF NOT EXISTS semantic_cache (
-                                              id              BIGSERIAL PRIMARY KEY,
-                                              query_text      TEXT NOT NULL,
-                                              query_embedding VECTOR(1536) NOT NULL,
+    id              BIGSERIAL PRIMARY KEY,
+    query_text      TEXT NOT NULL,
+    query_embedding VECTOR(1536) NOT NULL,
     response        TEXT NOT NULL,
     created_at      TIMESTAMP DEFAULT NOW()
-    );
+);
 
 CREATE INDEX IF NOT EXISTS semantic_cache_embedding_idx
     ON semantic_cache
     USING ivfflat (query_embedding vector_cosine_ops)
     WITH (lists = 100);
 
-
--- PASO 4: Función RAG
--- Firma exacta requerida por n8n Supabase Vector Store node:
+-- Step 4: RAG retrieval function
+-- Exact signature required by the n8n Supabase Vector Store node:
 -- (query_embedding, filter, match_count)
 
 CREATE OR REPLACE FUNCTION match_documents(
@@ -68,8 +65,7 @@ ORDER BY rag_documents.embedding <=> query_embedding
 END;
 $$;
 
-
--- PASO 5: Función Caché Semántico
+-- Step 5: Semantic cache lookup function
 
 CREATE OR REPLACE FUNCTION match_cache (
   query_embedding_input VECTOR(1536),
@@ -95,15 +91,8 @@ ORDER BY similarity DESC
     LIMIT match_count;
 $$;
 
-
--- PASO 6: Deshabilitar RLS
+-- Step 6: Disable Row Level Security (service_role key bypasses RLS, but disabling avoids
+-- permission errors when calling RPC functions from the backend)
 
 ALTER TABLE rag_documents   DISABLE ROW LEVEL SECURITY;
 ALTER TABLE semantic_cache  DISABLE ROW LEVEL SECURITY;
-
-
--- VERIFICACIÓN
-
--- SELECT tablename FROM pg_tables WHERE schemaname = 'public';
--- SELECT proname FROM pg_proc WHERE proname LIKE 'match_%';
--- SELECT * FROM pg_extension WHERE extname = 'vector';

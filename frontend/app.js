@@ -406,4 +406,39 @@ window.addEventListener('DOMContentLoaded', function() {
         rol: 'assistant',
         contenido: '¡Hola! Soy FinBot, tu asistente financiero. ¿En qué puedo ayudarte hoy?'
     });
+    initCoinCursor();
 });
+
+// Custom coin cursor — visible when the pointer is outside the chat and input areas
+function initCoinCursor() {
+    const coinCursor  = document.getElementById('coin-cursor');
+    const chatArea    = document.querySelector('.chat-container');
+    const inputArea   = document.querySelector('.input-form');
+    const header      = document.querySelector('.header');
+
+    document.addEventListener('mousemove', function(e) {
+        coinCursor.style.left = e.clientX + 'px';
+        coinCursor.style.top  = e.clientY + 'px';
+    });
+
+    document.addEventListener('mouseover', function(e) {
+        const insideInteractive =
+            chatArea.contains(e.target) ||
+            inputArea.contains(e.target) ||
+            header.contains(e.target);
+
+        if (insideInteractive) {
+            coinCursor.style.display = 'none';
+            document.body.style.cursor = '';
+        } else {
+            coinCursor.style.display = 'block';
+            document.body.style.cursor = 'none';
+        }
+    });
+
+    // Restore cursor when the mouse leaves the window
+    document.addEventListener('mouseleave', function() {
+        coinCursor.style.display = 'none';
+        document.body.style.cursor = '';
+    });
+}

@@ -7,24 +7,20 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<!-- Custom coin cursor — shown outside the chat box -->
+<div id="coin-cursor">🪙</div>
+
 <div class="container">
 
-    <!--HEADER-->
     <header class="header">
-        <h1>💰 FinBot</h1>
-        <p>Tu asistente financiero inteligente</p>
+        <h1>FinBot</h1>
+        <p>Tu asistente financiero con IA. Consulta tasas en tiempo real, analiza documentos bancarios y resuelve tus dudas en español e inglés — disponible 24/7.</p>
     </header>
 
-    <!-- CONTENEDOR DEL CHAT (aquí se acumula el historial)-->
     <div class="chat-container">
+        <div id="messages" class="messages"></div>
 
-        <!-- Contenedor de mensajes - AQUÍ SE ACUMULA EL HISTORIAL -->
-        <div id="messages" class="messages">
-            <!-- Los mensajes se van agregando aquí dinámicamente -->
-            <!-- NO se borran, se acumulan para formar el historial -->
-        </div>
-
-        <!-- Indicador de carga -->
         <div id="loading" class="loading hidden">
             <div class="typing-indicator">
                 <span></span>
@@ -35,12 +31,9 @@
         </div>
     </div>
 
-    <!-- FORMULARIO DE INPUT (siempre visible abajo) -->
     <form id="chat-form" class="input-form">
 
-        <!-- Fila de selectores -->
         <div class="selectors-row">
-            <!-- Selector modo de ENTRADA: Texto / Voz / Imagen+Texto -->
             <div class="selector-group">
                 <span class="selector-label">Entrada</span>
                 <div class="mode-selector">
@@ -56,7 +49,6 @@
                 </div>
             </div>
 
-            <!-- Selector modo de RESPUESTA: Texto / Audio -->
             <div class="selector-group">
                 <span class="selector-label">Respuesta</span>
                 <div class="mode-selector">
@@ -70,7 +62,6 @@
             </div>
         </div>
 
-        <!-- Sección de grabación de voz (visible solo en modo Voz) -->
         <div class="voice-recorder hidden" id="voice-section">
             <button type="button" id="record-btn" class="record-btn">
                 🎤 Grabar voz
@@ -81,45 +72,21 @@
             </div>
         </div>
 
-        <!-- Sección de upload de imagen (visible solo en modo Imagen+Texto) -->
         <div class="image-upload-container hidden" id="image-section">
-            <input
-                    type="file"
-                    id="image-upload"
-                    accept="image/*"
-                    class="image-input"
-            >
-            <label for="image-upload" class="image-label">
-                📎 Adjuntar imagen
-            </label>
+            <input type="file" id="image-upload" accept="image/*" class="image-input">
+            <label for="image-upload" class="image-label">📎 Adjuntar imagen</label>
             <div id="image-preview" class="image-preview hidden"></div>
         </div>
 
-        <!-- Upload de archivo de audio -->
         <div class="audio-upload-container hidden" id="audio-section-upload">
-          <input
-            type="file"
-            id="audio-upload"
-            accept=".mp3,.wav,.ogg,.webm,.m4a,.mp4,.mp4a,.mpeg,.mpga"
-            class="audio-file-input"
-          >
-          <label for="audio-upload" class="audio-file-label">
-            📁 Subir audio
-          </label>
-          <div id="audio-file-preview" class="audio-file-preview hidden"></div>
+            <input type="file" id="audio-upload" accept=".mp3,.wav,.ogg,.webm,.m4a,.mp4,.mp4a,.mpeg,.mpga" class="audio-file-input">
+            <label for="audio-upload" class="audio-file-label">📁 Subir audio</label>
+            <div id="audio-file-preview" class="audio-file-preview hidden"></div>
         </div>
 
-        <!-- Input de texto + botón enviar -->
         <div class="input-container">
-            <input
-                    type="text"
-                    id="message-input"
-                    placeholder="Escribe tu mensaje..."
-                    autocomplete="off"
-            >
-            <button type="submit" id="send-btn" class="send-btn">
-                Enviar
-            </button>
+            <input type="text" id="message-input" placeholder="Escribe tu mensaje..." autocomplete="off">
+            <button type="submit" id="send-btn" class="send-btn">Enviar</button>
         </div>
     </form>
 
