@@ -1,0 +1,646 @@
+{
+  "name": "FinBot",
+  "nodes": [
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        416
+      ],
+      "id": "46aeb310-edaa-49a7-8f23-5240507818db",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableName": {
+          "__rl": true,
+          "value": "rag_documents",
+          "mode": "list",
+          "cachedResultName": "rag_documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        688
+      ],
+      "id": "99963fc9-425d-4cfc-906f-7f3f7353946c",
+      "name": "Supabase Vector Store"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        672
+      ],
+      "id": "44a866de-0ab4-43b3-a097-9f35f35ac450",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 1536
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        832
+      ],
+      "id": "5512290c-2539-49d3-8f9e-cdcca9b3210c",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Usa esta tool para responder preguntas sobre productos FinBot, finanzas personales, ahorro, educación financiera y seguridad en línea. Siempre consultarla antes de responder sobre estos temas.\n",
+        "topK": 5
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        480
+      ],
+      "id": "bb218eea-30b7-4e2b-b9b7-373e090e4c78",
+      "name": "Rag FitBox"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "finbot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -928,
+        144
+      ],
+      "id": "fc66cf60-9744-4e5a-ad60-bb1698632b9e",
+      "name": "Webhook",
+      "webhookId": "5f7b360d-7a78-4288-9ad8-9efe9a67d8ac"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres FinBot, asistente virtual de FinBot Financial Services, fintech que opera en Colombia y Estados Unidos. Tono formal, profesional y cercano.\n\nIDIOMA: Always detect the language of each user message and respond in that same language. Mensajes mixtos → responde en el idioma dominante. Cambio de idioma → cambias de inmediato sin mencionarlo.\n\nMEMORIA: Tienes acceso a los últimos 7 mensajes de la conversación. Recuerda nombres, datos y contexto mencionados previamente. Si el usuario hace referencia a algo anterior, respóndele con ese contexto de forma natural.\n\nFUENTES DE INFORMACIÓN:\n- Finanzas personales, ahorro, educación financiera y seguridad en línea: usa el RAG (Rag FinBox) como única fuente.\n- Productos, servicios y soporte de FinBot: EXCLUSIVAMENTE el RAG. Nunca uses conocimiento propio sobre FinBot.\n- Cálculos, tasas de cambio y criptomonedas: EXCLUSIVAMENTE las tools disponibles.\n- Si preguntan de qué fuente vienen tus respuestas, puedes indicarlo con naturalidad.\n\nAlcance: finanzas personales, seguridad en línea, productos FinBot y soporte. Otros temas → declina educadamente en el idioma activo.\n\nIMÁGENES: Cuando el usuario adjunta una imagen analízala y responde basándote en su contenido.\n\nREGLAS DE EXTENSIÓN:\n- Longitud máxima: Tu respuesta no debe superar las 120 palabras\n- Estructura visual: Si vas a explicar un proceso paso a paso (ej. cómo activar una tarjeta), usa una lista numerada (1, 2, 3) con un máximo de 3 pasos sencillos.\n- Prohibido el relleno: No agregues introducciones largas ni avisos legales repetitivos a menos que el usuario pregunte algo explícitamente regulado. Ve directo a la respuesta.\n\nFormato: $10,000,000 COP | 8.50% | DD/MM/YYYY (ES) MM/DD/YYYY (EN)\n\n\nFORMATO DE RESPUESTA OBLIGATORIO:\n{\"response\": \"tu respuesta completa en el idioma detectado\", \"tool_used\": \"calculate interest | get usd rate | currency convert | crypto price | Rag FinBot | Image | Agente (Usalo si no puedes responder la pregunta o está fuera de las tools) \"}\nNunca agregues texto fuera del JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -256,
+        256
+      ],
+      "id": "5f9223f0-3319-4b5c-abd9-c7f13d680a08",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "description": "Calcula interés compuesto. Usar cuando el usuario pregunta cuánto dinero tendrá después de invertir. Parámetros: principal (monto inicial en COP), rate (tasa anual como decimal: 0.08 = 8%), years (número de años)",
+        "jsCode": "const params    = JSON.parse($input.first().json.input);\nconst principal = parseFloat(params.principal);\nconst rate      = parseFloat(params.rate);\nconst years     = parseFloat(params.years);\n\nconst finalAmount = principal * Math.pow(1 + rate, years);\nconst interest    = finalAmount - principal;\n\nreturn `Monto final: $${Math.round(finalAmount).toLocaleString('es-CO')} COP. Intereses generados: $${Math.round(interest).toLocaleString('es-CO')} COP.`;"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        480
+      ],
+      "id": "30c9f6e3-dd2c-4c02-9ce1-6340ebdcd6b0",
+      "name": "calculate_interest"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Obtiene el tipo de cambio USD/COP actual. Usar cuando pregunten por el precio del dólar o conversión con peso colombiano.",
+        "url": "https://open.er-api.com/v6/latest/USD",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -176,
+        480
+      ],
+      "id": "6b8dcd26-5abb-49d4-bcd1-6eee6d530f00",
+      "name": "get_usd_rate"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Precio actual de criptomonedas en USD. Parámetro: coin (ID de CoinGecko: bitcoin, ethereum, solana, cardano, etc)",
+        "url": "https://api.coingecko.com/api/v3/simple/price",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "=ids",
+              "value": "$input.item.json.coin "
+            },
+            {
+              "name": "vs_currencies",
+              "value": "usd"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-cg-demo-api-key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -112,
+        656
+      ],
+      "id": "c0066497-3ae4-4195-8c55-a74ce5e9725a",
+      "name": "crypto_price"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Convierte divisas internacionales: EUR, USD, GBP, JPY, CAD, CHF. NO usar para COP, usar get_usd_rate en su lugar. Parámetros: from (moneda origen), to (moneda destino)",
+        "url": "https://api.frankfurter.dev/v2/rates",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "base",
+              "value": "={{ $input.item.json.from }}"
+            },
+            {
+              "name": "quotes",
+              "value": "={{ $input.item.json.to }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -32,
+        480
+      ],
+      "id": "80453346-9d2c-47e5-b074-c4d5f05f6dba",
+      "name": "currency_convert"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst msg = body.message || '';\n\n// Detectar idioma\nconst hasSpanishChars = ['á','é','í','ó','ú','ñ','ü','¿','¡'].some(c => msg.includes(c));\nconst spanishWords = ['cuánto','cómo','qué','dónde','cuándo','pesos','invertir','tasa','dólar','años','está','tengo','quiero','puedo'];\nconst msgLower = msg.toLowerCase();\nconst hasSpanishWords = spanishWords.some(w => msgLower.includes(w));\nconst englishWords = ['what','how much','invest','exchange rate','current','dollar','years','interest'];\nconst hasEnglishWords = englishWords.some(w => msgLower.includes(w));\n\nlet idioma;\nif (hasSpanishChars || hasSpanishWords) {\n  idioma = 'SPANISH';\n} else if (hasEnglishWords) {\n  idioma = 'ENGLISH';\n} else {\n  idioma = 'SPANISH';\n}\n\n// Limitar historial a 3 si hay imagen (evitar exceder context window)\nconst limite = body.image ? 3 : 7;\nconst mensajes = (body.messages || []).slice(-limite);\nconst historial = mensajes.length > 0\n  ? mensajes.map(m => (m.role === 'user' ? 'Usuario' : 'FinBot') + ': ' + m.content).join('\\n') + '\\n\\n'\n  : '';\n\n// chatInput SIEMPRE es solo texto - imagen va separada\nreturn {\n  chatInput: '[RESPOND IN ' + idioma + ' ONLY]\\n\\n' + historial + msg,\n  image:     body.image || null,\n  mode:      body.mode  || 'text',\n  idioma:    idioma\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        144
+      ],
+      "id": "1ce41ba0-cf84-4dde-9531-61e1451aa616",
+      "name": "Parse Input"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8c089be8-5069-4db9-b52a-9f4c4d79d23f",
+              "name": "response",
+              "value": "={{ $json.response }}",
+              "type": "string"
+            },
+            {
+              "id": "01aee6af-d000-4959-8b55-12b94e2ecd20",
+              "name": "tool_used",
+              "value": "={{ $json.tool_used }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        96
+      ],
+      "id": "e6b3a01a-330f-45c8-b9f3-8923fcd7919c",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        624,
+        96
+      ],
+      "id": "195a5783-3955-4fd8-af7f-1faa2f36f5e5",
+      "name": "Send Response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "22463e1a-bc1e-44d2-b45f-877b25f0e7f5",
+              "leftValue": "={{ $json.image }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -480,
+        144
+      ],
+      "id": "5962073d-4577-4fba-b05a-2794e4327545",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.body) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -48,
+        80
+      ],
+      "id": "6824746f-d904-4693-9d62-363a94ca028e",
+      "name": "OpenAI Vision"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1060bb06-9dfb-4c0a-9c1c-766a7508ac9b",
+              "name": "response",
+              "value": "={{ JSON.parse($('AI Agent').item.json.output).response }}",
+              "type": "string"
+            },
+            {
+              "id": "f8950ad4-a1f8-424c-8443-8be012a9b2df",
+              "name": "tool_used",
+              "value": "={{ JSON.parse($('AI Agent').item.json.output).tool_used }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -784,
+        368
+      ],
+      "id": "0dfc9128-a2b1-4687-8846-82407e4c90cc",
+      "name": "Parse Agent Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.choices[0].message.content;\nconst cleaned = content.replace(/^```json\\n?/, '').replace(/\\n?```$/, '').trim();\n\nlet response, toolUsed;\n\ntry {\n  const parsed = JSON.parse(cleaned);\n  // Si tiene el formato estándar\n  if (parsed.response) {\n    response = parsed.response;\n    toolUsed = parsed.tool_used || 'imagen';\n  } else {\n    // Si devolvió otro JSON, convertirlo a texto descriptivo\n    response = JSON.stringify(parsed);\n    toolUsed = 'imagen';\n  }\n} catch(e) {\n  response = cleaned;\n  toolUsed = 'imagen';\n}\n\nreturn { response, tool_used: toolUsed };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        80
+      ],
+      "id": "73669cc4-8658-4609-ab5d-7bff514c10bb",
+      "name": "Parse Agent Response imagen"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output  = $input.first().json.output;\nconst cleaned = output.replace(/^```json\\n?/, '').replace(/\\n?```$/, '').trim();\nconst parsed  = JSON.parse(cleaned);\nreturn { response: parsed.response, tool_used: parsed.tool_used || null };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        256
+      ],
+      "id": "9eb0b333-4b06-4623-a1a8-1bce881e1007",
+      "name": "Parse Agent Response Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatInput = $input.first().json.chatInput;\nconst image = $input.first().json.image;\n\nreturn {\n  chatInput: chatInput,\n  image: image,\n  body: JSON.stringify({\n    model: \"gpt-4o-mini\",\n    messages: [\n      {\n        role: \"system\",\n        content: \"Eres FinBot, asistente financiero. Analiza la imagen y responde en el idioma del usuario. DEBES responder ÚNICAMENTE con este JSON exacto sin ningún texto adicional: {\\\"response\\\": \\\"tu respuesta descriptiva completa aquí\\\", \\\"tool_used\\\": \\\"imagen\\\"}. No uses markdown, no uses bloques de código, solo el JSON.\"\n      },\n      {\n        role: \"user\",\n        content: [\n          { type: \"text\", text: chatInput },\n          { type: \"image_url\", image_url: { url: image } }\n        ]\n      }\n    ]\n  })\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        80
+      ],
+      "id": "1f579d9b-5b82-4a0b-9942-fa2955c48f9e",
+      "name": "Parse Agent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Rag FitBox",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Rag FitBox",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rag FitBox": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "calculate_interest": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_usd_rate": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "currency_convert": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Agent Response Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Parse Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Vision": {
+      "main": [
+        [
+          {
+            "node": "Parse Agent Response imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Agent Response imagen": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Agent Response Code": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Agent": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "crypto_price": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c33f4ef3-505a-4b81-b929-606e9aceda2a",
+  "meta": {
+    "instanceId": "28d5e046b3c7c4fbbd4b50a9f8e43194ecc8b83483506445723556ea96b9459b"
+  },
+  "id": "cj0cHtyQXgrebtMj",
+  "tags": []
+}

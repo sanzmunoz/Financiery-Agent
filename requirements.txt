@@ -1,0 +1,11 @@
+fastapi[standard]
+python-dotenv
+openai
+langchain
+langchain-openai
+langchain-community
+langchain-text-splitters
+supabase
+httpx
+beautifulsoup4
+lxml
