@@ -1,33 +1,25 @@
-// ============================================================
-// FINBOT - FRONTEND CON GRABACIÓN DE VOZ
-// ============================================================
+// FinBot — Frontend with voice recording, image vision, and semantic cache indicators
 
-// ------------------------------------------------------------
-// CONFIGURACIÓN
-// ------------------------------------------------------------
+// --- Configuration ---
 const BACKEND_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
-    : 'https://TU-SERVICIO.onrender.com';  // reemplazar con tu URL de Render
+    : 'https://financiery-agent.onrender.com';
 
 const API_URL = `${BACKEND_URL}/api/chat`;
 const TRANSCRIBE_URL = `${BACKEND_URL}/api/transcribe`;
 
-// ------------------------------------------------------------
-// VARIABLES GLOBALES
-// ------------------------------------------------------------
+// --- Global state ---
 let modoEntrada = 'text';          // 'text' | 'voice' | 'image'
 let modoRespuesta = 'text';        // 'text' | 'audio'
 let imagenActual = null;
-let conversationHistory = [];      // Historial en memoria (no DOM)
+let conversationHistory = [];      // In-memory history — never read from the DOM
 
-// Variables para grabación de audio
-let mediaRecorder = null;          // Objeto que graba el audio
-let audioChunks = [];              // Pedazos de audio grabado
-let estaGrabando = false;          // Estado de grabación
+// Voice recording state
+let mediaRecorder = null;
+let audioChunks = [];
+let estaGrabando = false;
 
-// ------------------------------------------------------------
-// REFERENCIAS AL DOM
-// ------------------------------------------------------------
+// --- DOM references ---
 const contenedorMensajes = document.getElementById('messages');
 const indicadorCargando = document.getElementById('loading');
 const formularioChat = document.getElementById('chat-form');
@@ -38,7 +30,6 @@ const previsualizacionImagen = document.getElementById('image-preview');
 const botonesEntrada = document.querySelectorAll('.input-mode-btn');
 const botonesRespuesta = document.querySelectorAll('.response-mode-btn');
 
-// Elementos de grabación y secciones de entrada
 const botonGrabar = document.getElementById('record-btn');
 const statusGrabacion = document.getElementById('recording-status');
 const seccionVoz = document.getElementById('voice-section');
@@ -48,34 +39,29 @@ const seccionAudioUpload = document.getElementById('audio-section-upload');
 const audioUpload = document.getElementById('audio-upload');
 const audioFilePreview = document.getElementById('audio-file-preview');
 
-// ============================================================
-// EVENTOS
-// ============================================================
+// --- Events ---
 
-// Enviar formulario
 formularioChat.addEventListener('submit', function(evento) {
     evento.preventDefault();
     manejarEnvioMensaje();
 });
 
-// Cambiar modo de entrada (Texto / Voz / Imagen+Texto)
+// Input mode selector: Text / Voice / Image+Text
 botonesEntrada.forEach(function(boton) {
     boton.addEventListener('click', function() {
         botonesEntrada.forEach(function(b) { b.classList.remove('active'); });
         boton.classList.add('active');
         modoEntrada = boton.dataset.inputMode;
         actualizarSeccionesEntrada();
-        console.log('Modo entrada:', modoEntrada);
     });
 });
 
-// Cambiar modo de respuesta (Texto / Audio)
+// Response mode selector: Text / Audio
 botonesRespuesta.forEach(function(boton) {
     boton.addEventListener('click', function() {
         botonesRespuesta.forEach(function(b) { b.classList.remove('active'); });
         boton.classList.add('active');
         modoRespuesta = boton.dataset.responseMode;
-        console.log('Modo respuesta:', modoRespuesta);
     });
 });
 
@@ -85,245 +71,184 @@ function actualizarSeccionesEntrada() {
     seccionAudioUpload.classList.toggle('hidden', modoEntrada !== 'voice');
 }
 
-// Upload de imagen
-// En el evento de imageInput.addEventListener('change', ...)
-
+// Image upload: resize to max 800px and compress to 70% JPEG before sending
 inputImagen.addEventListener('change', function(e) {
-  const archivo = e.target.files[0];
-  if (!archivo) return;
+    const archivo = e.target.files[0];
+    if (!archivo) return;
 
-  const img = new Image();
-  const reader = new FileReader();
+    const img = new Image();
+    const reader = new FileReader();
 
-  reader.onload = function(ev) {
-    img.onload = function() {
-      // Redimensionar y comprimir
-      const canvas = document.createElement('canvas');
-      const maxSize = 800;
-      let width = img.width;
-      let height = img.height;
+    reader.onload = function(ev) {
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const maxSize = 800;
+            let width = img.width;
+            let height = img.height;
 
-      if (width > height && width > maxSize) {
-        height = Math.round((height * maxSize) / width);
-        width = maxSize;
-      } else if (height > maxSize) {
-        width = Math.round((width * maxSize) / height);
-        height = maxSize;
-      }
+            if (width > height && width > maxSize) {
+                height = Math.round((height * maxSize) / width);
+                width = maxSize;
+            } else if (height > maxSize) {
+                width = Math.round((width * maxSize) / height);
+                height = maxSize;
+            }
 
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
 
-      // Guardar comprimida al 70%
-      imagenActual = canvas.toDataURL('image/jpeg', 0.7);
-      previsualizacionImagen.textContent = '📎 ' + archivo.name;
-      previsualizacionImagen.classList.remove('hidden');
+            imagenActual = canvas.toDataURL('image/jpeg', 0.7);
+            previsualizacionImagen.textContent = '📎 ' + archivo.name;
+            previsualizacionImagen.classList.remove('hidden');
+        };
+        img.src = ev.target.result;
     };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(archivo);
+    reader.readAsDataURL(archivo);
 });
 
-// ------------------------------------------------------------
-// NUEVO: Botón de grabación
-// ------------------------------------------------------------
+// Toggle recording on button click
 botonGrabar.addEventListener('click', function() {
     if (estaGrabando) {
-        // Si está grabando, parar
         pararGrabacion();
     } else {
-        // Si no está grabando, iniciar
         iniciarGrabacion();
     }
 });
 
-// Evento: subir archivo de audio
+// Audio file upload: send directly to Whisper for transcription
 audioUpload.addEventListener('change', async function(e) {
-  const archivo = e.target.files[0];
-  if (!archivo) return;
+    const archivo = e.target.files[0];
+    if (!archivo) return;
 
-  // Mostrar nombre del archivo
-  audioFilePreview.textContent = '🎵 ' + archivo.name;
-  audioFilePreview.classList.remove('hidden');
+    audioFilePreview.textContent = '🎵 ' + archivo.name;
+    audioFilePreview.classList.remove('hidden');
 
-  // Mostrar estado de transcripción
-  inputMensaje.value = 'Transcribiendo audio...';
-  inputMensaje.disabled = true;
-  deshabilitarInputs(true);
+    inputMensaje.value = 'Transcribiendo audio...';
+    inputMensaje.disabled = true;
+    deshabilitarInputs(true);
 
-  try {
-    // Enviar archivo a Whisper
-    const formData = new FormData();
-    formData.append('audio', archivo);
-
-    const respuesta = await fetch(TRANSCRIBE_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!respuesta.ok) {
-      throw new Error('Error HTTP: ' + respuesta.status);
-    }
-
-    const datos = await respuesta.json();
-
-    // Poner texto transcrito en el input
-    inputMensaje.value = datos.text;
-    inputMensaje.focus();
-
-  } catch (error) {
-    console.error('Error transcribiendo audio:', error);
-    inputMensaje.value = '';
-    alert('Error al transcribir el audio. Verifica que el archivo sea válido.');
-  } finally {
-    inputMensaje.disabled = false;
-    deshabilitarInputs(false);
-    // Limpiar input de archivo
-    audioUpload.value = '';
-    audioFilePreview.classList.add('hidden');
-  }
-});
-
-// ============================================================
-// FUNCIONES DE GRABACIÓN
-// ============================================================
-
-// ------------------------------------------------------------
-// FUNCIÓN: Iniciar grabación de audio
-// ------------------------------------------------------------
-async function iniciarGrabacion() {
     try {
-        // 1. PEDIR PERMISO PARA USAR EL MICRÓFONO
-        // getUserMedia() pide acceso al micrófono del navegador
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true  // Solo audio, no video
+        const formData = new FormData();
+        formData.append('audio', archivo);
+
+        const respuesta = await fetch(TRANSCRIBE_URL, {
+            method: 'POST',
+            body: formData
         });
 
-        // 2. CREAR EL GRABADOR
-        mediaRecorder = new MediaRecorder(stream);
+        if (!respuesta.ok) {
+            throw new Error('HTTP error: ' + respuesta.status);
+        }
 
-        // 3. RESETEAR EL ARRAY DE CHUNKS
+        const datos = await respuesta.json();
+        inputMensaje.value = datos.text;
+        inputMensaje.focus();
+
+    } catch (error) {
+        console.error('Transcription error:', error);
+        inputMensaje.value = '';
+        alert('Error al transcribir el audio. Verifica que el archivo sea válido.');
+    } finally {
+        inputMensaje.disabled = false;
+        deshabilitarInputs(false);
+        audioUpload.value = '';
+        audioFilePreview.classList.add('hidden');
+    }
+});
+
+// --- Voice recording functions ---
+
+async function iniciarGrabacion() {
+    try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
 
-        // 4. EVENTO: Cuando hay datos disponibles
         mediaRecorder.ondataavailable = function(evento) {
-            // Guardar cada pedazo de audio
             audioChunks.push(evento.data);
         };
 
-        // 5. EVENTO: Cuando termina la grabación
         mediaRecorder.onstop = function() {
-            // Convertir los chunks a un Blob (archivo de audio)
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-
-            // Enviar a transcribir
             transcribirAudio(audioBlob);
         };
 
-        // 6. INICIAR LA GRABACIÓN
         mediaRecorder.start();
         estaGrabando = true;
 
-        // 7. ACTUALIZAR LA UI
         botonGrabar.textContent = '⏹️ Detener';
         botonGrabar.classList.add('recording');
         statusGrabacion.classList.remove('hidden');
 
-        console.log('🎤 Grabación iniciada');
-
     } catch (error) {
-        console.error('Error al acceder al micrófono:', error);
+        console.error('Microphone access error:', error);
         alert('No se pudo acceder al micrófono. Por favor verifica los permisos.');
     }
 }
 
-// ------------------------------------------------------------
-// FUNCIÓN: Parar grabación
-// ------------------------------------------------------------
 function pararGrabacion() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        // Detener el MediaRecorder
         mediaRecorder.stop();
-
-        // Detener el stream del micrófono
+        // Release the microphone stream
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
 
         estaGrabando = false;
 
-        // Actualizar UI
         botonGrabar.textContent = '🎤 Grabar voz';
         botonGrabar.classList.remove('recording');
         statusGrabacion.classList.add('hidden');
-
-        console.log('⏹️ Grabación detenida');
     }
 }
 
-// ------------------------------------------------------------
-// FUNCIÓN: Transcribir audio con Whisper
-// ------------------------------------------------------------
+// Send recorded audio blob to Whisper and populate the text input with the transcript
 async function transcribirAudio(audioBlob) {
-    // Mostrar indicador de "procesando..."
     inputMensaje.value = 'Transcribiendo audio...';
     inputMensaje.disabled = true;
 
     try {
-        // 1. CREAR FormData (para enviar archivos)
         const formData = new FormData();
+        // FormData sets Content-Type automatically — do not set it manually
         formData.append('audio', audioBlob, 'grabacion.webm');
 
-        // 2. ENVIAR AL BACKEND
         const respuesta = await fetch(TRANSCRIBE_URL, {
             method: 'POST',
-            body: formData  // NO poner Content-Type, FormData lo maneja
+            body: formData
         });
 
         if (!respuesta.ok) {
-            throw new Error('Error en transcripción: ' + respuesta.status);
+            throw new Error('Transcription error: ' + respuesta.status);
         }
 
-        // 3. OBTENER LA TRANSCRIPCIÓN
         const datos = await respuesta.json();
-
-        // 4. PONER EL TEXTO TRANSCRITO EN EL INPUT
         inputMensaje.value = datos.text;
         inputMensaje.disabled = false;
         inputMensaje.focus();
 
-        console.log('✅ Transcripción:', datos.text);
-
     } catch (error) {
-        console.error('Error al transcribir:', error);
+        console.error('Transcription error:', error);
         inputMensaje.value = '';
         inputMensaje.disabled = false;
         alert('Error al transcribir el audio. Intenta de nuevo.');
     }
 }
 
-// ------------------------------------------------------------
-// FUNCIÓN: Construir historial de los últimos 7 mensajes
-// Lee de conversationHistory[], NO del DOM
-// ------------------------------------------------------------
+// Return the last 7 messages from in-memory history (never from the DOM)
 function construirHistorial() {
     return conversationHistory.slice(-7);
 }
 
-// ============================================================
-// FUNCIONES DE CHAT
-// ============================================================
+// --- Chat functions ---
 
 async function manejarEnvioMensaje() {
     const textoMensaje = inputMensaje.value.trim();
 
-    if (!textoMensaje && !imagenActual) {
-        return;
-    }
+    if (!textoMensaje && !imagenActual) return;
 
-    // Capturar imagen ANTES de cualquier reset (Fix 1)
+    // Capture image reference before resetting the input — prevents race condition
     const imagenParaEnviar = imagenActual;
-
-    // Guardar mensaje del usuario en historial en memoria
 
     agregarMensaje({
         rol: 'user',
@@ -339,15 +264,14 @@ async function manejarEnvioMensaje() {
     mostrarCargando(true);
     deshabilitarInputs(true);
 
+    // Snapshot history before pushing the new user message
     const historialParaEnviar = construirHistorial();
     conversationHistory.push({ role: 'user', content: textoMensaje });
 
     try {
         const respuesta = await fetch(API_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: textoMensaje,
                 messages: historialParaEnviar,
@@ -357,12 +281,11 @@ async function manejarEnvioMensaje() {
         });
 
         if (!respuesta.ok) {
-            throw new Error('Error HTTP: ' + respuesta.status);
+            throw new Error('HTTP error: ' + respuesta.status);
         }
 
         const datos = await respuesta.json();
 
-        // Guardar respuesta del asistente en historial en memoria
         conversationHistory.push({ role: 'assistant', content: datos.response });
 
         agregarMensaje({
@@ -379,7 +302,7 @@ async function manejarEnvioMensaje() {
         }
 
     } catch (error) {
-        console.error('Error al enviar mensaje:', error);
+        console.error('Send message error:', error);
         agregarMensaje({
             rol: 'assistant',
             contenido: 'Lo siento, ocurrió un error. Por favor intenta de nuevo.',
@@ -392,16 +315,9 @@ async function manejarEnvioMensaje() {
     }
 }
 
+// Render a message bubble with optional cache badge, tool badge, and latency badge
 function agregarMensaje(opciones) {
-    const {
-        rol,
-        contenido,
-        imagen,
-        desdeCache,
-        toolUsada,
-        latencia,
-        esError
-    } = opciones;
+    const { rol, contenido, imagen, desdeCache, toolUsada, latencia, esError } = opciones;
 
     const divMensaje = document.createElement('div');
     divMensaje.className = 'message ' + rol;
@@ -466,7 +382,6 @@ function deshabilitarInputs(deshabilitar) {
     botonEnviar.disabled = deshabilitar;
     inputImagen.disabled = deshabilitar;
     botonGrabar.disabled = deshabilitar;
-
     botonesEntrada.forEach(function(b) { b.disabled = deshabilitar; });
     botonesRespuesta.forEach(function(b) { b.disabled = deshabilitar; });
 }
@@ -476,14 +391,15 @@ function hacerScrollAbajo() {
     contenedorChat.scrollTop = contenedorChat.scrollHeight;
 }
 
+// Play TTS audio returned as a base64 data URL from the backend
 function reproducirAudio(url) {
     const audio = new Audio(url);
     audio.play().catch(function(error) {
-        console.error('Error al reproducir audio:', error);
+        console.error('Audio playback error:', error);
     });
 }
 
-// Inicialización
+// Initialization
 window.addEventListener('DOMContentLoaded', function() {
     actualizarSeccionesEntrada();
     agregarMensaje({

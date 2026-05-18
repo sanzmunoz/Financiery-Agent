@@ -26,7 +26,7 @@ class ChatRequest(BaseModel):
 async def chat(req: ChatRequest):
     start = time.time()
 
-    # 1. Check caché (solo si no hay imagen)
+    # 1. Check semantic cache — skip if an image is attached
     if not req.image:
         cached = await check_semantic_cache(req.message)
         if cached:
@@ -38,7 +38,7 @@ async def chat(req: ChatRequest):
                 "latency":    int((time.time() - start) * 1000)
             }
 
-    # 2. Llamar a n8n
+    # 2. Forward request to the n8n agent workflow
     n8n_response = await call_n8n_agent(
         message=req.message,
         messages=[m.model_dump() for m in req.messages],
@@ -49,11 +49,11 @@ async def chat(req: ChatRequest):
     response_text = n8n_response.get("response")
     tool_used     = n8n_response.get("tool_used")
 
-    # 3. Guardar en caché (no cachear si usó tool - parámetros únicos por pregunta)
+    # 3. Cache the response only when no tool was used (tool results contain real-time data)
     if not req.image and response_text and not tool_used:
         await store_in_cache(req.message, response_text)
 
-    # 4. Generar audio TTS si mode === "audio" (base64, no requiere storage)
+    # 4. Generate TTS audio if response mode is "audio"; return as base64 to avoid storage overhead
     audio_url = None
     if req.mode == "audio" and response_text:
         try:
@@ -65,7 +65,7 @@ async def chat(req: ChatRequest):
             audio_base64 = base64.b64encode(audio_response.content).decode("utf-8")
             audio_url = f"data:audio/mpeg;base64,{audio_base64}"
         except Exception as e:
-            print(f"❌ Error TTS: {e}")
+            print(f"TTS error: {e}")
 
     return {
         "response":   response_text,
@@ -77,7 +77,7 @@ async def chat(req: ChatRequest):
 
 @router.post("/transcribe")
 async def transcribe(audio: UploadFile = File(...)):
-    # Sin language para auto-detección bilingüe ES/EN (Reto 01 + Reto 03)
+    # No language param — Whisper auto-detects ES/EN (supports bilingual pipeline)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
         content = await audio.read()
         tmp.write(content)

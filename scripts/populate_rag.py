@@ -13,7 +13,7 @@ load_dotenv()
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SECRET_KEY"))
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-# URLs de Nequi con contenido relevante para FinBot
+# Source URLs: Nequi and Bancolombia pages covering security, savings, and personal finance
 URLS = [
     "https://www.nequi.com.co/personas/ayuda/tips-de-seguridad",
     "https://www.nequi.com.co/blog/que-son-los-dolares-digitales-y-como-funcionan-guia-facil-para-entenderlos",
@@ -28,10 +28,10 @@ URLS = [
 ]
 
 def populate():
-    print("🚀 Iniciando población de RAG...\n")
+    print("Starting RAG population...\n")
 
-    # 1. Scraping con WebBaseLoader (bs4)
-    print("📄 Paso 1: Scraping de las páginas...")
+    # Step 1: Scrape pages with WebBaseLoader
+    print("Step 1: Scraping pages...")
     loader = WebBaseLoader(URLS)
     loader.requests_kwargs = {
         "headers": {
@@ -40,16 +40,16 @@ def populate():
         }
     }
     docs = loader.load()
-    print(f"   ✅ {len(docs)} páginas cargadas: {sum(len(d.page_content) for d in docs)} chars\n")
+    print(f"   {len(docs)} pages loaded — {sum(len(d.page_content) for d in docs)} chars\n")
 
-    # 2. Chunking con overlap
-    print("✂️  Paso 2: Chunking del texto...")
+    # Step 2: Chunk with overlap
+    print("Step 2: Chunking...")
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_documents(docs)
-    print(f"   ✅ Generados: {len(chunks)} chunks\n")
+    print(f"   {len(chunks)} chunks generated\n")
 
-    # 3. Embeddings + Storage
-    print("💾 Paso 3: Generando embeddings y guardando...\n")
+    # Step 3: Embed and store in Supabase pgvector
+    print("Step 3: Generating embeddings and storing...\n")
     for i, chunk in enumerate(chunks):
         vector = embeddings.embed_query(chunk.page_content)
         supabase.table("rag_documents").insert({
@@ -57,10 +57,10 @@ def populate():
             "embedding": vector,
             "source_url": chunk.metadata.get("source", "")
         }).execute()
-        print(f"   💾 Chunk {i+1}/{len(chunks)} guardado")
-        time.sleep(0.1)  # Rate limit protection
+        print(f"   Chunk {i+1}/{len(chunks)} stored")
+        time.sleep(0.1)  # Avoid hitting embedding API rate limits
 
-    print(f"\n✅ RAG poblado exitosamente — {len(chunks)} chunks totales")
+    print(f"\nRAG populated successfully — {len(chunks)} chunks total")
 
 if __name__ == "__main__":
     populate()

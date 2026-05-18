@@ -10,7 +10,8 @@ load_dotenv()
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SECRET_KEY"))
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-# Preguntas frecuentes de FinBot con sus respuestas predeterminadas
+# Pre-defined FAQ pairs for FinBot — seeded into semantic_cache so common questions
+# are answered instantly without calling the LLM
 FAQ = [
     {
         "query": "¿Cuál es el horario de atención de FinBot?",
@@ -43,8 +44,9 @@ FAQ = [
 ]
 
 def seed():
-    print(f"🌱 Poblando caché semántico con {len(FAQ)} preguntas frecuentes...\n")
+    print(f"Seeding semantic cache with {len(FAQ)} FAQ entries...\n")
 
+    # Step 1: Insert FAQ pairs into semantic_cache with their embeddings
     for i, item in enumerate(FAQ):
         vector = embeddings.embed_query(item["query"])
 
@@ -54,11 +56,12 @@ def seed():
             "response": item["response"]
         }).execute()
 
-        print(f"   ✅ {i+1}/{len(FAQ)}: {item['query'][:60]}...")
+        print(f"   {i+1}/{len(FAQ)}: {item['query'][:60]}...")
         time.sleep(0.1)
 
-    print(f"\n✅ Caché poblado exitosamente con {len(FAQ)} entradas")
+    print(f"\nCache seeded successfully — {len(FAQ)} entries")
 
+    # Step 2: Also index FAQ responses into rag_documents so the agent can retrieve them
     docs = [
         Document(page_content=item["response"], metadata={"source": "faq"})
         for item in FAQ
@@ -67,7 +70,7 @@ def seed():
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_documents(docs)
 
-    print(f"💾 Paso 3: Generando embeddings y guardando {len(chunks)} chunks en RAG...\n")
+    print(f"\nStep 2: Storing {len(chunks)} FAQ chunks into RAG index...\n")
     for i, chunk in enumerate(chunks):
         vector = embeddings.embed_query(chunk.page_content)
         supabase.table("rag_documents").insert({
@@ -76,7 +79,7 @@ def seed():
             "metadata": chunk.metadata,
             "source_url": chunk.metadata.get("source", "faq")
         }).execute()
-        print(f"   💾 Chunk {i+1}/{len(chunks)} guardado")
+        print(f"   Chunk {i+1}/{len(chunks)} stored")
         time.sleep(0.1)
 
 if __name__ == "__main__":

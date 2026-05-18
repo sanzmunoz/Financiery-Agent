@@ -1,5 +1,4 @@
-# load_dotenv() debe ir PRIMERO antes de cualquier import
-# que use variables de entorno a nivel de módulo
+# load_dotenv() must run before any module-level import that reads env vars
 from dotenv import load_dotenv
 load_dotenv()
 
