@@ -9,72 +9,72 @@ const API_URL = `${BACKEND_URL}/api/chat`;
 const TRANSCRIBE_URL = `${BACKEND_URL}/api/transcribe`;
 
 // --- Global state ---
-let modoEntrada = 'text';          // 'text' | 'voice' | 'image'
-let modoRespuesta = 'text';        // 'text' | 'audio'
-let imagenActual = null;
-let conversationHistory = [];      // In-memory history — never read from the DOM
+let inputMode = 'text';          // 'text' | 'voice' | 'image'
+let responseMode = 'text';       // 'text' | 'audio'
+let currentImage = null;
+let conversationHistory = [];    // In-memory history — never read from the DOM
 
 // Voice recording state
 let mediaRecorder = null;
 let audioChunks = [];
-let estaGrabando = false;
+let isRecording = false;
 
 // --- DOM references ---
-const contenedorMensajes = document.getElementById('messages');
-const indicadorCargando = document.getElementById('loading');
-const formularioChat = document.getElementById('chat-form');
-const inputMensaje = document.getElementById('message-input');
-const botonEnviar = document.getElementById('send-btn');
-const inputImagen = document.getElementById('image-upload');
-const previsualizacionImagen = document.getElementById('image-preview');
-const botonesEntrada = document.querySelectorAll('.input-mode-btn');
-const botonesRespuesta = document.querySelectorAll('.response-mode-btn');
+const messagesContainer = document.getElementById('messages');
+const loadingIndicator = document.getElementById('loading');
+const chatForm = document.getElementById('chat-form');
+const messageInput = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const imageInput = document.getElementById('image-upload');
+const imagePreview = document.getElementById('image-preview');
+const inputModeButtons = document.querySelectorAll('.input-mode-btn');
+const responseModeButtons = document.querySelectorAll('.response-mode-btn');
 
-const botonGrabar = document.getElementById('record-btn');
-const statusGrabacion = document.getElementById('recording-status');
-const seccionVoz = document.getElementById('voice-section');
-const seccionImagen = document.getElementById('image-section');
-const seccionAudioUpload = document.getElementById('audio-section-upload');
+const recordBtn = document.getElementById('record-btn');
+const recordingStatus = document.getElementById('recording-status');
+const voiceSection = document.getElementById('voice-section');
+const imageSection = document.getElementById('image-section');
+const audioUploadSection = document.getElementById('audio-section-upload');
 
 const audioUpload = document.getElementById('audio-upload');
 const audioFilePreview = document.getElementById('audio-file-preview');
 
 // --- Events ---
 
-formularioChat.addEventListener('submit', function(evento) {
-    evento.preventDefault();
-    manejarEnvioMensaje();
+chatForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+    handleSendMessage();
 });
 
 // Input mode selector: Text / Voice / Image+Text
-botonesEntrada.forEach(function(boton) {
-    boton.addEventListener('click', function() {
-        botonesEntrada.forEach(function(b) { b.classList.remove('active'); });
-        boton.classList.add('active');
-        modoEntrada = boton.dataset.inputMode;
-        actualizarSeccionesEntrada();
+inputModeButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        inputModeButtons.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        inputMode = btn.dataset.inputMode;
+        updateInputSections();
     });
 });
 
 // Response mode selector: Text / Audio
-botonesRespuesta.forEach(function(boton) {
-    boton.addEventListener('click', function() {
-        botonesRespuesta.forEach(function(b) { b.classList.remove('active'); });
-        boton.classList.add('active');
-        modoRespuesta = boton.dataset.responseMode;
+responseModeButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        responseModeButtons.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        responseMode = btn.dataset.responseMode;
     });
 });
 
-function actualizarSeccionesEntrada() {
-    seccionVoz.classList.toggle('hidden', modoEntrada !== 'voice');
-    seccionImagen.classList.toggle('hidden', modoEntrada !== 'image');
-    seccionAudioUpload.classList.toggle('hidden', modoEntrada !== 'voice');
+function updateInputSections() {
+    voiceSection.classList.toggle('hidden', inputMode !== 'voice');
+    imageSection.classList.toggle('hidden', inputMode !== 'image');
+    audioUploadSection.classList.toggle('hidden', inputMode !== 'voice');
 }
 
 // Image upload: resize to max 800px and compress to 70% JPEG before sending
-inputImagen.addEventListener('change', function(e) {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+imageInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
 
     const img = new Image();
     const reader = new FileReader();
@@ -98,60 +98,60 @@ inputImagen.addEventListener('change', function(e) {
             canvas.height = height;
             canvas.getContext('2d').drawImage(img, 0, 0, width, height);
 
-            imagenActual = canvas.toDataURL('image/jpeg', 0.7);
-            previsualizacionImagen.textContent = '📎 ' + archivo.name;
-            previsualizacionImagen.classList.remove('hidden');
+            currentImage = canvas.toDataURL('image/jpeg', 0.7);
+            imagePreview.textContent = file.name;
+            imagePreview.classList.remove('hidden');
         };
         img.src = ev.target.result;
     };
-    reader.readAsDataURL(archivo);
+    reader.readAsDataURL(file);
 });
 
 // Toggle recording on button click
-botonGrabar.addEventListener('click', function() {
-    if (estaGrabando) {
-        pararGrabacion();
+recordBtn.addEventListener('click', function() {
+    if (isRecording) {
+        stopRecording();
     } else {
-        iniciarGrabacion();
+        startRecording();
     }
 });
 
 // Audio file upload: send directly to Whisper for transcription
 audioUpload.addEventListener('change', async function(e) {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
-    audioFilePreview.textContent = '🎵 ' + archivo.name;
+    audioFilePreview.textContent = file.name;
     audioFilePreview.classList.remove('hidden');
 
-    inputMensaje.value = 'Transcribiendo audio...';
-    inputMensaje.disabled = true;
-    deshabilitarInputs(true);
+    messageInput.value = 'Transcribiendo audio...';
+    messageInput.disabled = true;
+    disableInputs(true);
 
     try {
         const formData = new FormData();
-        formData.append('audio', archivo);
+        formData.append('audio', file);
 
-        const respuesta = await fetch(TRANSCRIBE_URL, {
+        const response = await fetch(TRANSCRIBE_URL, {
             method: 'POST',
             body: formData
         });
 
-        if (!respuesta.ok) {
-            throw new Error('HTTP error: ' + respuesta.status);
+        if (!response.ok) {
+            throw new Error('HTTP error: ' + response.status);
         }
 
-        const datos = await respuesta.json();
-        inputMensaje.value = datos.text;
-        inputMensaje.focus();
+        const data = await response.json();
+        messageInput.value = data.text;
+        messageInput.focus();
 
     } catch (error) {
         console.error('Transcription error:', error);
-        inputMensaje.value = '';
+        messageInput.value = '';
         alert('Error al transcribir el audio. Verifica que el archivo sea válido.');
     } finally {
-        inputMensaje.disabled = false;
-        deshabilitarInputs(false);
+        messageInput.disabled = false;
+        disableInputs(false);
         audioUpload.value = '';
         audioFilePreview.classList.add('hidden');
     }
@@ -159,7 +159,7 @@ audioUpload.addEventListener('change', async function(e) {
 
 // --- Voice recording functions ---
 
-async function iniciarGrabacion() {
+async function startRecording() {
     try {
         // Request microphone access
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -167,21 +167,21 @@ async function iniciarGrabacion() {
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
 
-        mediaRecorder.ondataavailable = function(evento) {
-            audioChunks.push(evento.data);
+        mediaRecorder.ondataavailable = function(event) {
+            audioChunks.push(event.data);
         };
 
         mediaRecorder.onstop = function() {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            transcribirAudio(audioBlob);
+            transcribeAudio(audioBlob);
         };
 
         mediaRecorder.start();
-        estaGrabando = true;
+        isRecording = true;
 
-        botonGrabar.textContent = '⏹️ Detener';
-        botonGrabar.classList.add('recording');
-        statusGrabacion.classList.remove('hidden');
+        recordBtn.textContent = 'Stop';
+        recordBtn.classList.add('recording');
+        recordingStatus.classList.remove('hidden');
 
     } catch (error) {
         console.error('Microphone access error:', error);
@@ -189,210 +189,210 @@ async function iniciarGrabacion() {
     }
 }
 
-function pararGrabacion() {
+function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         // Release the microphone stream
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
 
-        estaGrabando = false;
+        isRecording = false;
 
-        botonGrabar.textContent = '🎤 Grabar voz';
-        botonGrabar.classList.remove('recording');
-        statusGrabacion.classList.add('hidden');
+        recordBtn.textContent = 'Record voice';
+        recordBtn.classList.remove('recording');
+        recordingStatus.classList.add('hidden');
     }
 }
 
 // Send recorded audio blob to Whisper and populate the text input with the transcript
-async function transcribirAudio(audioBlob) {
-    inputMensaje.value = 'Transcribiendo audio...';
-    inputMensaje.disabled = true;
+async function transcribeAudio(audioBlob) {
+    messageInput.value = 'Transcribiendo audio...';
+    messageInput.disabled = true;
 
     try {
         const formData = new FormData();
         // FormData sets Content-Type automatically — do not set it manually
-        formData.append('audio', audioBlob, 'grabacion.webm');
+        formData.append('audio', audioBlob, 'recording.webm');
 
-        const respuesta = await fetch(TRANSCRIBE_URL, {
+        const response = await fetch(TRANSCRIBE_URL, {
             method: 'POST',
             body: formData
         });
 
-        if (!respuesta.ok) {
-            throw new Error('Transcription error: ' + respuesta.status);
+        if (!response.ok) {
+            throw new Error('Transcription error: ' + response.status);
         }
 
-        const datos = await respuesta.json();
-        inputMensaje.value = datos.text;
-        inputMensaje.disabled = false;
-        inputMensaje.focus();
+        const data = await response.json();
+        messageInput.value = data.text;
+        messageInput.disabled = false;
+        messageInput.focus();
 
     } catch (error) {
         console.error('Transcription error:', error);
-        inputMensaje.value = '';
-        inputMensaje.disabled = false;
+        messageInput.value = '';
+        messageInput.disabled = false;
         alert('Error al transcribir el audio. Intenta de nuevo.');
     }
 }
 
 // Return the last 7 messages from in-memory history (never from the DOM)
-function construirHistorial() {
+function buildHistory() {
     return conversationHistory.slice(-7);
 }
 
 // --- Chat functions ---
 
-async function manejarEnvioMensaje() {
-    const textoMensaje = inputMensaje.value.trim();
+async function handleSendMessage() {
+    const messageText = messageInput.value.trim();
 
-    if (!textoMensaje && !imagenActual) return;
+    if (!messageText && !currentImage) return;
 
     // Capture image reference before resetting the input — prevents race condition
-    const imagenParaEnviar = imagenActual;
+    const imageToSend = currentImage;
 
-    agregarMensaje({
-        rol: 'user',
-        contenido: textoMensaje,
-        imagen: imagenParaEnviar
+    addMessage({
+        role: 'user',
+        content: messageText,
+        image: imageToSend
     });
 
-    inputMensaje.value = '';
-    imagenActual = null;
-    inputImagen.value = '';
-    previsualizacionImagen.classList.add('hidden');
+    messageInput.value = '';
+    currentImage = null;
+    imageInput.value = '';
+    imagePreview.classList.add('hidden');
 
-    mostrarCargando(true);
-    deshabilitarInputs(true);
+    showLoading(true);
+    disableInputs(true);
 
     // Snapshot history before pushing the new user message
-    const historialParaEnviar = construirHistorial();
-    conversationHistory.push({ role: 'user', content: textoMensaje });
+    const historyToSend = buildHistory();
+    conversationHistory.push({ role: 'user', content: messageText });
 
     try {
-        const respuesta = await fetch(API_URL, {
+        const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                message: textoMensaje,
-                messages: historialParaEnviar,
-                image: imagenParaEnviar,
-                mode: modoRespuesta
+                message: messageText,
+                messages: historyToSend,
+                image: imageToSend,
+                mode: responseMode
             })
         });
 
-        if (!respuesta.ok) {
-            throw new Error('HTTP error: ' + respuesta.status);
+        if (!response.ok) {
+            throw new Error('HTTP error: ' + response.status);
         }
 
-        const datos = await respuesta.json();
+        const data = await response.json();
 
-        conversationHistory.push({ role: 'assistant', content: datos.response });
+        conversationHistory.push({ role: 'assistant', content: data.response });
 
-        agregarMensaje({
-            rol: 'assistant',
-            contenido: datos.response,
-            desdeCache: datos.from_cache,
-            toolUsada: datos.tool_used,
-            latencia: datos.latency,
-            urlAudio: datos.audio_url
+        addMessage({
+            role: 'assistant',
+            content: data.response,
+            fromCache: data.from_cache,
+            toolUsed: data.tool_used,
+            latency: data.latency,
+            audioUrl: data.audio_url
         });
 
-        if (datos.audio_url && modoRespuesta === 'audio') {
-            reproducirAudio(datos.audio_url);
+        if (data.audio_url && responseMode === 'audio') {
+            playAudio(data.audio_url);
         }
 
     } catch (error) {
         console.error('Send message error:', error);
-        agregarMensaje({
-            rol: 'assistant',
-            contenido: 'Lo siento, ocurrió un error. Por favor intenta de nuevo.',
-            esError: true
+        addMessage({
+            role: 'assistant',
+            content: 'Lo siento, ocurrió un error. Por favor intenta de nuevo.',
+            isError: true
         });
     } finally {
-        mostrarCargando(false);
-        deshabilitarInputs(false);
-        inputMensaje.focus();
+        showLoading(false);
+        disableInputs(false);
+        messageInput.focus();
     }
 }
 
 // Render a message bubble with optional cache badge, tool badge, and latency badge
-function agregarMensaje(opciones) {
-    const { rol, contenido, imagen, desdeCache, toolUsada, latencia, esError } = opciones;
+function addMessage(options) {
+    const { role, content, image, fromCache, toolUsed, latency, isError } = options;
 
-    const divMensaje = document.createElement('div');
-    divMensaje.className = 'message ' + rol;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ' + role;
 
-    const divContenido = document.createElement('div');
-    divContenido.className = 'message-content';
-    divContenido.textContent = contenido;
-    divMensaje.appendChild(divContenido);
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = content;
+    messageDiv.appendChild(contentDiv);
 
-    if (rol === 'user' && imagen) {
-        const imgElemento = document.createElement('img');
-        imgElemento.src = imagen;
-        imgElemento.className = 'message-image';
-        divMensaje.appendChild(imgElemento);
+    if (role === 'user' && image) {
+        const imgEl = document.createElement('img');
+        imgEl.src = image;
+        imgEl.className = 'message-image';
+        messageDiv.appendChild(imgEl);
     }
 
-    if (rol === 'assistant' && !esError) {
-        const divBadges = document.createElement('div');
-        divBadges.className = 'badges';
+    if (role === 'assistant' && !isError) {
+        const badgesDiv = document.createElement('div');
+        badgesDiv.className = 'badges';
 
-        if (desdeCache) {
-            const badgeCache = document.createElement('span');
-            badgeCache.className = 'badge cache';
-            badgeCache.textContent = '⚡ Caché';
-            divBadges.appendChild(badgeCache);
+        if (fromCache) {
+            const cacheLabel = document.createElement('span');
+            cacheLabel.className = 'badge cache';
+            cacheLabel.textContent = 'Cache';
+            badgesDiv.appendChild(cacheLabel);
         }
 
-        if (toolUsada) {
-            const badgeTool = document.createElement('span');
-            badgeTool.className = 'badge tool';
-            badgeTool.textContent = '🔧 ' + toolUsada;
-            divBadges.appendChild(badgeTool);
+        if (toolUsed) {
+            const toolLabel = document.createElement('span');
+            toolLabel.className = 'badge tool';
+            toolLabel.textContent = toolUsed;
+            badgesDiv.appendChild(toolLabel);
         }
 
-        if (latencia) {
-            const badgeLatencia = document.createElement('span');
-            badgeLatencia.className = 'badge latency';
-            badgeLatencia.textContent = latencia + 'ms';
-            divBadges.appendChild(badgeLatencia);
+        if (latency) {
+            const latencyLabel = document.createElement('span');
+            latencyLabel.className = 'badge latency';
+            latencyLabel.textContent = latency + 'ms';
+            badgesDiv.appendChild(latencyLabel);
         }
 
-        if (divBadges.children.length > 0) {
-            divMensaje.appendChild(divBadges);
+        if (badgesDiv.children.length > 0) {
+            messageDiv.appendChild(badgesDiv);
         }
     }
 
-    contenedorMensajes.appendChild(divMensaje);
-    hacerScrollAbajo();
+    messagesContainer.appendChild(messageDiv);
+    scrollToBottom();
 }
 
-function mostrarCargando(mostrar) {
-    if (mostrar) {
-        indicadorCargando.classList.remove('hidden');
-        hacerScrollAbajo();
+function showLoading(show) {
+    if (show) {
+        loadingIndicator.classList.remove('hidden');
+        scrollToBottom();
     } else {
-        indicadorCargando.classList.add('hidden');
+        loadingIndicator.classList.add('hidden');
     }
 }
 
-function deshabilitarInputs(deshabilitar) {
-    inputMensaje.disabled = deshabilitar;
-    botonEnviar.disabled = deshabilitar;
-    inputImagen.disabled = deshabilitar;
-    botonGrabar.disabled = deshabilitar;
-    botonesEntrada.forEach(function(b) { b.disabled = deshabilitar; });
-    botonesRespuesta.forEach(function(b) { b.disabled = deshabilitar; });
+function disableInputs(disable) {
+    messageInput.disabled = disable;
+    sendBtn.disabled = disable;
+    imageInput.disabled = disable;
+    recordBtn.disabled = disable;
+    inputModeButtons.forEach(function(b) { b.disabled = disable; });
+    responseModeButtons.forEach(function(b) { b.disabled = disable; });
 }
 
-function hacerScrollAbajo() {
-    const contenedorChat = document.querySelector('.chat-container');
-    contenedorChat.scrollTop = contenedorChat.scrollHeight;
+function scrollToBottom() {
+    const chatContainer = document.querySelector('.chat-container');
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 // Play TTS audio returned as a base64 data URL from the backend
-function reproducirAudio(url) {
+function playAudio(url) {
     const audio = new Audio(url);
     audio.play().catch(function(error) {
         console.error('Audio playback error:', error);
@@ -401,10 +401,10 @@ function reproducirAudio(url) {
 
 // Initialization
 window.addEventListener('DOMContentLoaded', function() {
-    actualizarSeccionesEntrada();
-    agregarMensaje({
-        rol: 'assistant',
-        contenido: '¡Hola! Soy FinBot, tu asistente financiero. ¿En qué puedo ayudarte hoy?'
+    updateInputSections();
+    addMessage({
+        role: 'assistant',
+        content: '¡Hola! Soy FinBot, tu asistente financiero. ¿En qué puedo ayudarte hoy?'
     });
     initCoinCursor();
 });

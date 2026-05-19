@@ -106,6 +106,21 @@ Scrapes 10 pages from Nequi and Bancolombia and stores chunks with embeddings in
 python scripts/populate_rag.py
 ```
 
+Source URLs indexed by the RAG pipeline:
+
+| Source | URL |
+|--------|-----|
+| Nequi | https://www.nequi.com.co/personas/ayuda/tips-de-seguridad |
+| Nequi | https://www.nequi.com.co/blog/que-son-los-dolares-digitales-y-como-funcionan-guia-facil-para-entenderlos |
+| Nequi | https://www.nequi.com.co/blog/que-tu-huella-digital-no-te-haga-vulnerable-tips-para-protegernos-en-linea |
+| Bancolombia | https://www.bancolombia.com/educacion-financiera/seguridad-de-la-informacion/proteccion-informacion-en-internet |
+| Bancolombia | https://www.bancolombia.com/educacion-financiera/seguridad-de-la-informacion/smishing |
+| Bancolombia | https://www.bancolombia.com/educacion-financiera/seguridad-de-la-informacion/phishing |
+| Bancolombia | https://www.bancolombia.com/centro-de-ayuda/preguntas-frecuentes/abrir-cuenta-ahorros-bancolombia-celular |
+| Bancolombia | https://www.bancolombia.com/educacion-financiera/finanzas-personales/que-son-gastos-hormiga |
+| Bancolombia | https://www.bancolombia.com/educacion-financiera/finanzas-personales/como-administrar-dinero |
+| Bancolombia | https://www.bancolombia.com/educacion-financiera/finanzas-personales/todo-sobre-ahorro |
+
 Verify: `SELECT COUNT(*) FROM rag_documents;` should return > 0.
 
 ---
@@ -209,7 +224,7 @@ The `BACKEND_URL` in `app.js` switches automatically between localhost (developm
 [Browser] frontend/app.js  ◄───┘
 │   ├─ conversationHistory.push(user + assistant)
 │   ├─ agregarMensaje() → createElement
-│   │   └─ badges: ⚡ Cache / 🔧 tool_name / latency ms
+│   │   └─ badges: Cache / tool_name / latency ms
 │   └─ [if audio_url] → new Audio(url).play()
 ```
 
@@ -298,6 +313,6 @@ The `BACKEND_URL` in `app.js` switches automatically between localhost (developm
 
 - **Dynamic backend URL in frontend**: `app.js` detects `window.location.hostname` to switch between `http://localhost:8000` (development) and the Render production URL automatically.
 
-- **Custom coin cursor**: A JavaScript-driven `🪙` emoji follows the mouse outside the chat, input, and header areas. The system cursor is hidden only in those zones; interactive elements inside the chat restore the default cursor automatically.
+- **Custom coin cursor**: A JavaScript-driven `$` character follows the mouse outside the chat, input, and header areas. The system cursor is hidden only in those zones; interactive elements inside the chat restore the default cursor automatically.
 
 - **Chat background image**: The `.chat-container` uses a CSS layered background — the image (`assets/agent_finbot.jpeg`) sits below a semi-transparent green overlay so message bubbles remain readable regardless of image contrast.
