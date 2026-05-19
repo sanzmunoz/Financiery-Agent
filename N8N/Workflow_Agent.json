@@ -1,5 +1,5 @@
 {
-  "name": "FinBot",
+  "name": "Financial Agent",
   "nodes": [
     {
       "parameters": {
@@ -100,7 +100,7 @@
     },
     {
       "parameters": {
-        "description": "Usa esta tool para responder preguntas sobre productos FinBot, finanzas personales, ahorro, educación financiera y seguridad en línea. Siempre consultarla antes de responder sobre estos temas.\n",
+        "description": "Usa esta tool para responder preguntas sobre productos del Agente Financiero, finanzas personales, ahorro, educación financiera y seguridad en línea. Siempre consultarla antes de responder sobre estos temas.\n",
         "topK": 5
       },
       "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
@@ -115,7 +115,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "finbot",
+        "path": "financial-agent",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -132,7 +132,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "Eres FinBot, asistente virtual de FinBot Financial Services, fintech que opera en Colombia y Estados Unidos. Tono formal, profesional y cercano.\n\nIDIOMA: Always detect the language of each user message and respond in that same language. Mensajes mixtos → responde en el idioma dominante. Cambio de idioma → cambias de inmediato sin mencionarlo.\n\nMEMORIA: Tienes acceso a los últimos 7 mensajes de la conversación. Recuerda nombres, datos y contexto mencionados previamente. Si el usuario hace referencia a algo anterior, respóndele con ese contexto de forma natural.\n\nFUENTES DE INFORMACIÓN:\n- Finanzas personales, ahorro, educación financiera y seguridad en línea: usa el RAG (Rag FinBox) como única fuente.\n- Productos, servicios y soporte de FinBot: EXCLUSIVAMENTE el RAG. Nunca uses conocimiento propio sobre FinBot.\n- Cálculos, tasas de cambio y criptomonedas: EXCLUSIVAMENTE las tools disponibles.\n- Si preguntan de qué fuente vienen tus respuestas, puedes indicarlo con naturalidad.\n\nAlcance: finanzas personales, seguridad en línea, productos FinBot y soporte. Otros temas → declina educadamente en el idioma activo.\n\nIMÁGENES: Cuando el usuario adjunta una imagen analízala y responde basándote en su contenido.\n\nREGLAS DE EXTENSIÓN:\n- Longitud máxima: Tu respuesta no debe superar las 120 palabras\n- Estructura visual: Si vas a explicar un proceso paso a paso (ej. cómo activar una tarjeta), usa una lista numerada (1, 2, 3) con un máximo de 3 pasos sencillos.\n- Prohibido el relleno: No agregues introducciones largas ni avisos legales repetitivos a menos que el usuario pregunte algo explícitamente regulado. Ve directo a la respuesta.\n\nFormato: $10,000,000 COP | 8.50% | DD/MM/YYYY (ES) MM/DD/YYYY (EN)\n\n\nFORMATO DE RESPUESTA OBLIGATORIO:\n{\"response\": \"tu respuesta completa en el idioma detectado\", \"tool_used\": \"calculate interest | get usd rate | currency convert | crypto price | Rag FinBot | Image | Agente (Usalo si no puedes responder la pregunta o está fuera de las tools) \"}\nNunca agregues texto fuera del JSON."
+          "systemMessage": "Eres el Agente Financiero, asistente virtual de Financial Agent Services, fintech que opera en Colombia y Estados Unidos. Tono formal, profesional y cercano.\n\nIDIOMA: Always detect the language of each user message and respond in that same language. Mensajes mixtos → responde en el idioma dominante. Cambio de idioma → cambias de inmediato sin mencionarlo.\n\nMEMORIA: Tienes acceso a los últimos 7 mensajes de la conversación. Recuerda nombres, datos y contexto mencionados previamente. Si el usuario hace referencia a algo anterior, respóndele con ese contexto de forma natural.\n\nFUENTES DE INFORMACIÓN:\n- Finanzas personales, ahorro, educación financiera y seguridad en línea: usa el RAG (Rag FinBox) como única fuente.\n- Productos, servicios y soporte de FinBot: EXCLUSIVAMENTE el RAG. Nunca uses conocimiento propio sobre FinBot.\n- Cálculos, tasas de cambio y criptomonedas: EXCLUSIVAMENTE las tools disponibles.\n- Si preguntan de qué fuente vienen tus respuestas, puedes indicarlo con naturalidad.\n\nAlcance: finanzas personales, seguridad en línea, productos FinBot y soporte. Otros temas → declina educadamente en el idioma activo.\n\nIMÁGENES: Cuando el usuario adjunta una imagen analízala y responde basándote en su contenido.\n\nREGLAS DE EXTENSIÓN:\n- Longitud máxima: Tu respuesta no debe superar las 120 palabras\n- Estructura visual: Si vas a explicar un proceso paso a paso (ej. cómo activar una tarjeta), usa una lista numerada (1, 2, 3) con un máximo de 3 pasos sencillos.\n- Prohibido el relleno: No agregues introducciones largas ni avisos legales repetitivos a menos que el usuario pregunte algo explícitamente regulado. Ve directo a la respuesta.\n\nFormato: $10,000,000 COP | 8.50% | DD/MM/YYYY (ES) MM/DD/YYYY (EN)\n\n\nFORMATO DE RESPUESTA OBLIGATORIO:\n{\"response\": \"tu respuesta completa en el idioma detectado\", \"tool_used\": \"calculate interest | get usd rate | currency convert | crypto price | Rag FinBot | Image | Agente (Usalo si no puedes responder la pregunta o está fuera de las tools) \"}\nNunca agregues texto fuera del JSON."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -239,7 +239,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.item.json.body;\nconst msg = body.message || '';\n\n// Detectar idioma\nconst hasSpanishChars = ['á','é','í','ó','ú','ñ','ü','¿','¡'].some(c => msg.includes(c));\nconst spanishWords = ['cuánto','cómo','qué','dónde','cuándo','pesos','invertir','tasa','dólar','años','está','tengo','quiero','puedo'];\nconst msgLower = msg.toLowerCase();\nconst hasSpanishWords = spanishWords.some(w => msgLower.includes(w));\nconst englishWords = ['what','how much','invest','exchange rate','current','dollar','years','interest'];\nconst hasEnglishWords = englishWords.some(w => msgLower.includes(w));\n\nlet idioma;\nif (hasSpanishChars || hasSpanishWords) {\n  idioma = 'SPANISH';\n} else if (hasEnglishWords) {\n  idioma = 'ENGLISH';\n} else {\n  idioma = 'SPANISH';\n}\n\n// Limitar historial a 3 si hay imagen (evitar exceder context window)\nconst limite = body.image ? 3 : 7;\nconst mensajes = (body.messages || []).slice(-limite);\nconst historial = mensajes.length > 0\n  ? mensajes.map(m => (m.role === 'user' ? 'Usuario' : 'FinBot') + ': ' + m.content).join('\\n') + '\\n\\n'\n  : '';\n\n// chatInput SIEMPRE es solo texto - imagen va separada\nreturn {\n  chatInput: '[RESPOND IN ' + idioma + ' ONLY]\\n\\n' + historial + msg,\n  image:     body.image || null,\n  mode:      body.mode  || 'text',\n  idioma:    idioma\n};"
+        "jsCode": "const body = $input.item.json.body;\nconst msg = body.message || '';\n\n// Detectar idioma\nconst hasSpanishChars = ['á','é','í','ó','ú','ñ','ü','¿','¡'].some(c => msg.includes(c));\nconst spanishWords = ['cuánto','cómo','qué','dónde','cuándo','pesos','invertir','tasa','dólar','años','está','tengo','quiero','puedo'];\nconst msgLower = msg.toLowerCase();\nconst hasSpanishWords = spanishWords.some(w => msgLower.includes(w));\nconst englishWords = ['what','how much','invest','exchange rate','current','dollar','years','interest'];\nconst hasEnglishWords = englishWords.some(w => msgLower.includes(w));\n\nlet idioma;\nif (hasSpanishChars || hasSpanishWords) {\n  idioma = 'SPANISH';\n} else if (hasEnglishWords) {\n  idioma = 'ENGLISH';\n} else {\n  idioma = 'SPANISH';\n}\n\n// Limitar historial a 3 si hay imagen (evitar exceder context window)\nconst limite = body.image ? 3 : 7;\nconst mensajes = (body.messages || []).slice(-limite);\nconst historial = mensajes.length > 0\n  ? mensajes.map(m => (m.role === 'user' ? 'Usuario' : 'Agente Financiero') + ': ' + m.content).join('\\n') + '\\n\\n'\n  : '';\n\n// chatInput SIEMPRE es solo texto - imagen va separada\nreturn {\n  chatInput: '[RESPOND IN ' + idioma + ' ONLY]\\n\\n' + historial + msg,\n  image:     body.image || null,\n  mode:      body.mode  || 'text',\n  idioma:    idioma\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -412,7 +412,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const chatInput = $input.first().json.chatInput;\nconst image = $input.first().json.image;\n\nreturn {\n  chatInput: chatInput,\n  image: image,\n  body: JSON.stringify({\n    model: \"gpt-4o-mini\",\n    messages: [\n      {\n        role: \"system\",\n        content: \"Eres FinBot, asistente financiero. Analiza la imagen y responde en el idioma del usuario. DEBES responder ÚNICAMENTE con este JSON exacto sin ningún texto adicional: {\\\"response\\\": \\\"tu respuesta descriptiva completa aquí\\\", \\\"tool_used\\\": \\\"imagen\\\"}. No uses markdown, no uses bloques de código, solo el JSON.\"\n      },\n      {\n        role: \"user\",\n        content: [\n          { type: \"text\", text: chatInput },\n          { type: \"image_url\", image_url: { url: image } }\n        ]\n      }\n    ]\n  })\n};"
+        "jsCode": "const chatInput = $input.first().json.chatInput;\nconst image = $input.first().json.image;\n\nreturn {\n  chatInput: chatInput,\n  image: image,\n  body: JSON.stringify({\n    model: \"gpt-4o-mini\",\n    messages: [\n      {\n        role: \"system\",\n        content: \"Eres el Agente Financiero. Analiza la imagen y responde en el idioma del usuario. DEBES responder ÚNICAMENTE con este JSON exacto sin ningún texto adicional: {\\\"response\\\": \\\"tu respuesta descriptiva completa aquí\\\", \\\"tool_used\\\": \\\"imagen\\\"}. No uses markdown, no uses bloques de código, solo el JSON.\"\n      },\n      {\n        role: \"user\",\n        content: [\n          { type: \"text\", text: chatInput },\n          { type: \"image_url\", image_url: { url: image } }\n        ]\n      }\n    ]\n  })\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

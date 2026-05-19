@@ -1,4 +1,4 @@
-# FinBot — Bilingual Financial AI Assistant
+# Bilingual Financial AI Assistant
 
 Bilingual chatbot (ES/EN) for a fintech with RAG, semantic cache, voice pipeline, vision, and real-time financial tools.
 
@@ -25,7 +25,7 @@ Bilingual chatbot (ES/EN) for a fintech with RAG, semantic cache, voice pipeline
 │   ├── style.css
 │   ├── app.js
 │   └── assets/
-│       └── agent_finbot.jpeg       # Chat background image
+│       └── agent.jpeg       # Chat background image
 │
 ├── backend/
 │   ├── src/
@@ -62,7 +62,7 @@ Create `backend/.env` with:
 OPENAI_API_KEY=sk-proj-...
 SUPABASE_URL=https://xxxxx.supabase.co
 SUPABASE_SECRET_KEY=eyJhbGc...          # use service_role key, not anon
-N8N_WEBHOOK_URL=https://tu-instancia.n8n.cloud/webhook/finbot
+N8N_WEBHOOK_URL=https://tu-instancia.n8n.cloud/webhook/financial-agent
 ALLOWED_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 ```
 
@@ -127,7 +127,7 @@ Verify: `SELECT COUNT(*) FROM rag_documents;` should return > 0.
 
 ### 4. Seed semantic cache (one-time)
 
-Inserts 7 pre-defined FinBot FAQs with embeddings into `semantic_cache`.
+Inserts 7 pre-defined Financial Agent FAQs with embeddings into `semantic_cache`.
 
 ```bash
 python scripts/seed_cache.py

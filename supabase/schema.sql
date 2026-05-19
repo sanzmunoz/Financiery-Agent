@@ -1,4 +1,4 @@
--- SUPABASE SCHEMA - FinBot
+-- SUPABASE SCHEMA - Financial Agent
 -- Step 1: Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 

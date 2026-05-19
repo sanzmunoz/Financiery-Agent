@@ -1,5 +1,5 @@
 import os
-os.environ.setdefault("USER_AGENT", "FinBot-RAG/1.0")
+os.environ.setdefault("USER_AGENT", "Financial-Agent-RAG/1.0")
 
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter

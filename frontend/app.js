@@ -1,4 +1,4 @@
-// FinBot — Frontend with voice recording, image vision, and semantic cache indicators
+// Financial Agent — Frontend with voice recording, image vision, and semantic cache indicators
 
 // --- Configuration ---
 const BACKEND_URL = window.location.hostname === 'localhost'
@@ -404,7 +404,7 @@ window.addEventListener('DOMContentLoaded', function() {
     updateInputSections();
     addMessage({
         role: 'assistant',
-        content: '¡Hola! Soy FinBot, tu asistente financiero. ¿En qué puedo ayudarte hoy?'
+        content: '¡Hola! Soy tu Agente Financiero. ¿En qué puedo ayudarte hoy?'
     });
     initCoinCursor();
 });
