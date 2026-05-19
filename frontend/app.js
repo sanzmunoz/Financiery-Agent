@@ -8,6 +8,38 @@ const BACKEND_URL = window.location.hostname === 'localhost'
 const API_URL = `${BACKEND_URL}/api/chat`;
 const TRANSCRIBE_URL = `${BACKEND_URL}/api/transcribe`;
 
+// --- FAQ sidebar data ---
+const FAQS = [
+    {
+        question: '¿Cuál es el horario de atención del Agente Financiero?',
+        answer: 'Atendemos de lunes a viernes de 8:00 AM a 6:00 PM y sábados de 9:00 AM a 1:00 PM. El asistente virtual está disponible las 24 horas del día, los 7 días de la semana.'
+    },
+    {
+        question: '¿Cómo recupero mi contraseña?',
+        answer: 'Ingresa a la app, selecciona "¿Olvidó su contraseña?", ingresa tu número de celular y recibirás un código OTP por SMS para establecer una nueva contraseña.'
+    },
+    {
+        question: '¿Cuánto demora una transferencia?',
+        answer: 'Las transferencias entre cuentas son inmediatas. A otros bancos vía PSE o ACH tardan máximo 2 horas hábiles. Las internacionales entre 1 y 3 días hábiles.'
+    },
+    {
+        question: '¿Cuál es el límite de transferencia diario?',
+        answer: 'Cuenta Básica: $3,000,000 COP. Cuenta Plus: $10,000,000 COP. Cuenta Premium: $30,000,000 COP. Puedes solicitar un upgrade desde la app.'
+    },
+    {
+        question: '¿Cómo abro una cuenta?',
+        answer: 'Es 100% digital y gratuito. Descarga la app, crea tu cuenta, verifica tu número de celular, fotografia tu cédula y completa una selfie biométrica. Menos de 5 minutos.'
+    },
+    {
+        question: '¿Tiene costos o comisiones?',
+        answer: 'Cuenta de ahorros sin cuota de manejo. Transferencias entre cuentas gratuitas. A otros bancos: $1,200 COP. Retiros en cajeros Servibanca: $2,500 COP.'
+    },
+    {
+        question: '¿Cómo bloqueo mi tarjeta si la perdí?',
+        answer: 'Desde la app ve a "Mi tarjeta" → "Bloquear tarjeta", o llama al *611 disponible 24/7. El bloqueo es instantáneo y puedes pedir una tarjeta de reposición sin costo.'
+    }
+];
+
 // --- Global state ---
 let inputMode = 'text';          // 'text' | 'voice' | 'image'
 let responseMode = 'text';       // 'text' | 'audio'
@@ -406,8 +438,58 @@ window.addEventListener('DOMContentLoaded', function() {
         role: 'assistant',
         content: '¡Hola! Soy tu Agente Financiero. ¿En qué puedo ayudarte hoy?'
     });
+    initFaqSidebar();
     initCoinCursor();
 });
+
+// Rotate FAQ cards in the sidebar every 6 seconds
+function initFaqSidebar() {
+    const card         = document.querySelector('.faq-card');
+    const questionEl   = document.querySelector('.faq-question');
+    const answerEl     = document.querySelector('.faq-answer');
+    const dotsContainer = document.querySelector('.faq-dots');
+
+    let current = Math.floor(Math.random() * FAQS.length);
+
+    FAQS.forEach(function(_, i) {
+        const dot = document.createElement('span');
+        dot.className = 'faq-dot' + (i === current ? ' active' : '');
+        dot.addEventListener('click', function() { goTo(i); });
+        dotsContainer.appendChild(dot);
+    });
+
+    function updateCard(index) {
+        card.classList.add('fade');
+        setTimeout(function() {
+            questionEl.textContent = FAQS[index].question;
+            answerEl.textContent   = FAQS[index].answer;
+            document.querySelectorAll('.faq-dot').forEach(function(d, i) {
+                d.classList.toggle('active', i === index);
+            });
+            card.classList.remove('fade');
+        }, 400);
+    }
+
+    function goTo(index) {
+        current = index;
+        updateCard(current);
+        resetInterval();
+    }
+
+    let timer = setInterval(advance, 6000);
+
+    function advance() {
+        current = (current + 1) % FAQS.length;
+        updateCard(current);
+    }
+
+    function resetInterval() {
+        clearInterval(timer);
+        timer = setInterval(advance, 6000);
+    }
+
+    updateCard(current);
+}
 
 // Custom coin cursor — visible when the pointer is outside the chat and input areas
 function initCoinCursor() {
